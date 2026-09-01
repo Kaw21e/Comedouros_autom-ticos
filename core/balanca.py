@@ -62,7 +62,6 @@ def calibrar_balanca(num_balanca):
     
     print(f"\n--- Calibrando Balança {num_balanca} ---")
     print("Por favor, remova todo o peso da balança.")
-    print("Estabilizando sensor...")
 
     print("Estabilizando o sensor...")
     for _ in range(10): # Joga fora as primeiras 10 leituras
@@ -79,6 +78,25 @@ def calibrar_balanca(num_balanca):
     mediana_tara = np.median(leituras)
         
     BALANCAS[num_balanca]["tara"] = mediana_tara
+
+def retarar_balanca(num_balanca):
+    "Retorna a tara do momento em que a função foi chamada, deve ser usada com a função 'salvar tara'"
+    config = BALANCAS[num_balanca]
+    dt, sck = config["DT"], config["SCK"]
+        
+    print(f"\n--- recalibrando Balança {num_balanca} ---")
+    
+    print("Realizando leituras...")
+    leituras = [read_count(dt, sck) for _ in range(20)]
+        
+    mediana_tara = np.median(leituras)
+    return mediana_tara
+
+def salvar_tara(num_balanca,tara):
+    "Salva a tara na balança especificada"
+    BALANCAS[num_balanca]["tara"] = tara
+
+
 
 
 
@@ -140,7 +158,7 @@ def main():
     # Configura e calibra todas as balanças automaticamente
     for num, config in BALANCAS.items():
         setup_balanca(config["DT"], config["SCK"])
-        calibrar_balanca(num)
+        calibrar_balanca(num)  
         
     print("\n--- Lendo pesos em tempo real (Ctrl+C para sair) ---")
     
@@ -164,7 +182,6 @@ def main():
             b1_str = f"{bruto1}" if bruto1 is not None else "Erro"
             b2_str = f"{bruto2}" if bruto2 is not None else "Erro"
 
-            # O FLUSH=TRUE É OBRIGATÓRIO AQUI!
             print(f"\rBalança 1: {p1_str} (Bruto: {b1_str}) | Balança 2: {p2_str} (Bruto: {b2_str})          ", end="", flush=True)
             
             time.sleep(0.5)

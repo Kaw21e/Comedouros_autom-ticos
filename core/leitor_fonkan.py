@@ -97,10 +97,11 @@ def autualizarTag(csv, tag):
         while True:
             if resultado := getTagInfo(csv, tag):
                 print("Esta tag já existe no sistema, deseja autualizar alguma informação dela?\n")
-                ex_nome = list(resultado.values())[3]
-                ex_valor = list(resultado.values())[2]
-                ex_mestra = list(resultado.values())[6]
-                opcao = input(f'1- Nome: {ex_nome} \n2- Valor: {ex_valor}\n3- Permissão mestra: {ex_mestra}\n')
+                ex_nome = resultado['nome']
+                ex_valor = resultado['valor']
+                ex_mestra = resultado['mestra']
+                ex_peso = resultado['peso']
+                opcao = input(f'1- Nome: {ex_nome} \n2- Valor: {ex_valor}\n3- Peso para o animal: {ex_peso}\n4- Permissão mestra: {ex_mestra}\n')
                 match opcao:
                     case '1':
                         while True:
@@ -123,6 +124,16 @@ def autualizarTag(csv, tag):
                         csv.to_csv('tag_info.csv', index=False)
                     case '3':
                         while True:
+                            peso = input('quantos quilos o animal está pesando?\n').strip()
+                            try:
+                                numero = float(peso)
+                                break
+                            except ValueError:
+                                print("entrada inválida, digite apenas números!!")
+                        csv.loc[csv['tag_id'] == tag, 'peso'] = peso
+                        csv.to_csv('tag_info.csv', index=False)
+                    case '4':
+                        while True:
                             mestra = input('essa chave é mestra? Digite apenas "s" ou "n"\n')
                             if mestra == 's':
                                 mestra = True
@@ -135,48 +146,53 @@ def autualizarTag(csv, tag):
 
                 input("pressione enter para voltar ou cntrl + c para sair")
         
-        else:
-            print("iniciando processo para cadastro da tag:")
-            while True:
-                nome = input('digite um nome para a tag\n').strip()
-                if nome:
-                    break
-                else:
-                    print("Digite algo!")
-            
-            while True:
-                valor = input('quantos gramas de ração por dia?\n').strip()
-                try:
-                    numero = float(valor)
-                    break
-                except ValueError:
-                    print("entrada inválida, digite apenas números!!")
+            else:
+                print("iniciando processo para cadastro da tag:")
+                while True:
+                    nome = input('digite um nome para a tag\n').strip()
+                    if nome:
+                        break
+                    else:
+                        print("Digite algo!")
+                
+                while True:
+                    valor = input('quantos gramas de ração por dia?\n').strip()
+                    try:
+                        numero = float(valor)
+                        break
+                    except ValueError:
+                        print("entrada inválida, digite apenas números!!")
+                while True:
+                    peso = input('Qual o peso do animal?\n').strip()
+                    try:
+                        numero = float(peso)
+                        break
+                    except ValueError:
+                        print("entrada inválida, digite apenas números!!")
+                while True:
+                    mestra = input('essa chave é mestra? Digite apenas "s" ou "n"\n')
+                    if mestra == 's':
+                        mestra = True
+                        break
+                    if mestra == 'n':
+                        mestra = False
+                        break
 
-            while True:
-                mestra = input('essa chave é mestra? Digite apenas "s" ou "n"\n')
-                if mestra == 's':
-                    mestra = True
-                    break
-                if mestra == 'n':
-                    mestra = False
-                    break
+                nova_tag = pd.DataFrame([{
+                    'tag_id': tag,
+                    'tipo' : 'fixo',
+                    'valor' : numero,
+                    'nome' : nome,
+                    'peso' : peso,
+                    'mestra' : mestra
+                }])
 
-            nova_tag = pd.DataFrame([{
-                'tag_id': tag,
-                'tipo' : 'fixo',
-                'valor' : numero,
-                'nome' : nome,
-                'historico_janelas' : "{}",
-                'janelas_alimentacao' : "[('00:00:00', '23:59:59')]",
-                'mestra' : mestra
-            }])
+                csv = pd.concat([csv, nova_tag], ignore_index=True)
+                csv.to_csv('tag_info.csv', index = False)
 
-            csv = pd.concat([csv, nova_tag], ignore_index=True)
-            csv.to_csv('tag_info.csv', index = False)
+                print("tag cadastrada com sucesso!")
 
-            print("tag cadastrada com sucesso!")
-
-        return nova_tag.iloc[0].to_dict()
+            return nova_tag.iloc[0].to_dict()
 
 def exibir_menu():
     """Mostra o menu de opções para o usuário."""

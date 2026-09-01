@@ -53,13 +53,13 @@ def confirmar_presenca_sensor(sensor, logger=None):
     while time.monotonic() < fim:
         if not sensor_tem_presenca(sensor, logger=logger):
             if logou_inicio and logger:
-                logger.info("Confirmacao de presenca no Sensor 1 cancelada: sinal desapareceu.")
+                logger.info("Confirmacao de presenca no Sensor {sensor} cancelada: sinal desapareceu.")
             return False
 
         if not logou_inicio:
             if logger:
                 logger.info(
-                    f"Confirmacao de presenca no Sensor 1 iniciada "
+                    f"Confirmacao de presenca no Sensor {sensor} iniciada "
                     f"({confirmation_time:.2f}s)."
                 )
             logou_inicio = True
@@ -67,7 +67,7 @@ def confirmar_presenca_sensor(sensor, logger=None):
         time.sleep(poll_interval)
 
     if logger:
-        logger.info("Presenca confirmada no Sensor 1.")
+        logger.info("Presenca confirmada no Sensor {sensor}.")
     return True
 
 
@@ -170,7 +170,8 @@ def ler_sensores():
     estados_atuais = {}
     
     for pin, name in SENSORES.items():
-        if sensor_tem_presenca(pin):
+        pin1 = '1' if pin == SENSOR_1_PIN else '2'
+        if sensor_tem_presenca(pin1):
             status = STATUS_BLOQUEADO
         else:
             status = STATUS_LIVRE
@@ -180,7 +181,7 @@ def ler_sensores():
     return estados_atuais
 
 
-def aguardar_confirmacao_de_posicao(logger, tag_id):
+'''def aguardar_confirmacao_de_posicao(logger, tag_id):
         """
         Aguarda a confirmação de que o animal está posicionado entre os dois sensores,
         utilizando a função ler_sensores() que retorna um dicionário.
@@ -207,7 +208,7 @@ def aguardar_confirmacao_de_posicao(logger, tag_id):
             time.sleep(0.2)
         
         logger.warning(f"[{tag_id}] Tempo esgotado. O animal não se posicionou corretamente.")
-        return False
+        return False'''
 
 
 if __name__ == "__main__":
