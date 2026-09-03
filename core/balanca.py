@@ -175,7 +175,7 @@ def main():
             if peso2 is not None:
                 peso2 = mediana_buffer(buffer_peso2, peso2)
             # Garante que não vai dar erro se a leitura falhar
-            p1_str = f"{peso1:6.2f} g" if peso1 is not None else "Erro"
+            p1_str = f"{peso1:6.2f} kg" if peso1 is not None else "Erro"
             p2_str = f"{peso2:6.2f} kg" if peso2 is not None else "Erro"
             
             # Formata os valores brutos para mostrar na tela

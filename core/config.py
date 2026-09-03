@@ -17,7 +17,13 @@ SENSOR_1_POLL_INTERVAL = 0.05
 SENSOR_2_POLL_INTERVAL = 0.05
 SENSOR_2_CONFIRMATION_TIME = 0.5
 
-
+# --- CONFIGURAÇÕES DE HARDWARE (PINOS GPIO BOARD) ---
+PINO_RELE = 10
+PINO_PWM = 12 
+PINO_BOTAO_MANUAL_MOTOR1 = 36
+PINO_BOTAO_MANUAL_MOTOR2 = 26
+BOTAO_PRESSIONADO = GPIO.HIGH
+BOTAO_SOLTO = GPIO.LOW
 
 # --- CONFIGURAÇÕES DO LEITOR RFID ---
 RFID_PORTA_SERIAL = "/dev/ttyUSB0"
@@ -26,7 +32,7 @@ RFID_POTENCIA_DB = 15
 
 # --- CONFIGURAÇÕES DA BALANCA ---
 BALANCAS = {
-        1: {"DT": 15, "SCK": 13, "fator": -134.118, "tara": 0},  # Balança da ração
+        1: {"DT": 15, "SCK": 13, "fator": -134118, "tara": 0},  # Balança da ração
         2: {"DT": 7, "SCK": 11, "fator": -7228.267, "tara": 0},   # Balança do animal
     }
 

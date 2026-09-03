@@ -117,6 +117,17 @@ def _limitar_velocidade(velocidade):
         return 255
     return velocidade
 
+#APÓS 15 SEGUNDOS DO MOTOR MOVENDO ELE É FORÇADO A PARAR
+def parar_motor(velocidade, motor_id):
+    contador = 0
+    while velocidade > 0 and contador < 15:
+        time.sleep(1)
+        contador += 1
+
+    if contador == 15:
+        _definir_estado_normal(motor_id, "parado", 0)
+
+
 
 def controlar_motor(direcao, velocidade, motor_id):
     pigpio_conn = _obter_pigpio()

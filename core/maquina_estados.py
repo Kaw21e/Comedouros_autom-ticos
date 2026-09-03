@@ -6,6 +6,7 @@ import pandas as pd
 import motor
 import balanca as bl
 import numpy as np
+import botoes_motores_manual as btm
 
 
 class SistemaCocho:
@@ -15,11 +16,13 @@ class SistemaCocho:
         self.peso_racao_buffer = []
         self.relatorio_csv = None
 
+
         
 
     def configurar_cocho(self):
         try:
             sr.setup_gpio() # setando gpios do sensor
+            btm.setup_botoes() 
             self.leitor_rfid = rfid.iniciar_leitor()
             self.tag_info = pd.read_csv('tag_info.csv')
             self.relatorio_csv = pd.read_csv(LOCAL_RELATORIO_CSV)
@@ -79,7 +82,7 @@ class SistemaCocho:
                         nome_animal = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'nome'].values[0]
                         peso_animal_anterior = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'peso'].values[0]
                             
-                        print(f"tag encontrada, a vaquinha {nome_animal} vai comer {peso_racao}g de ração hoje!")
+                        print(f"tag encontrada, a vaquinha {nome_animal} vai comer {peso_racao}kg de ração hoje!")
 
                         #começa a rodar o motor e ler balanca 3. ALIMENTAÇÃO (Motor/Balança)
                         while sr.confirmar_presenca_sensor('1'): 
@@ -142,8 +145,8 @@ class SistemaCocho:
             'hora_entrada' : entrada,
             'hora_saida' : saida,
             'tempo_cocho' : f"{minutos}m {segundos:02d}s" if minutos != 0 or segundos != 0 else 0,
-            'peso_animal' : peso_animal_atual,
-            'peso_racao' : peso_racao_despejada
+            'peso_animal' : round(peso_animal_atual, 3),
+            'peso_racao' : round(peso_racao_despejada, 3)
         }
 
 if __name__ == "__main__":

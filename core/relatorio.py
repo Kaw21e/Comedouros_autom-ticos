@@ -41,7 +41,7 @@ def normalizar_peso(valor):
         return ""
     if not math.isfinite(v):      # pega None, nan e inf
         return ""
-    return int(round(v))          # arredonda (não trunca)
+    return round(v, 3)          # arredonda (não trunca)
 
 
 def _normalizar_campo(coluna, valor):
