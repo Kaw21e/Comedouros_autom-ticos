@@ -2,31 +2,30 @@ import os
 import csv
 import logging
 import time
-import asyncio
 from pathlib import Path
-
 import requests
 
 
 def _carregar_tag_info():
-    """Carrega TAG_INFO tanto do config.py quanto do CSV do projeto atual."""
+    """Carrega as tags usando a configuração e o CSV do projeto atual."""
     try:
-        from config import TAG_INFO as TAG_INFO_CONFIG
-        if isinstance(TAG_INFO_CONFIG, dict) and TAG_INFO_CONFIG:
-            return TAG_INFO_CONFIG
+        from config import TAG_INFO_CSV
+        csv_configurado = Path(TAG_INFO_CSV)
+    except Exception:
+        csv_configurado = None
+
+    try:
+        from config import TAG_INFO
+        if isinstance(TAG_INFO, dict) and TAG_INFO:
+            return TAG_INFO
     except Exception:
         pass
 
     base_dir = Path(__file__).resolve().parent
-    csv_candidates = [
-        Path("/home/raspberry/comedouros-automaticos_2.0/core/tag_info.csv"),
-        base_dir / "tag_info.csv",
-        base_dir.parent / "tag_info.csv",
-        Path("/home/raspberry/comedouros-automaticos/core/tag_info.csv"),
-    ]
+    csv_candidates = [csv_configurado, base_dir / "tag_info.csv"]
 
     for caminho in csv_candidates:
-        if caminho and caminho.exists():
+        if caminho is not None and caminho.exists():
             tag_info = {}
             try:
                 with caminho.open("r", encoding="utf-8", newline="") as arquivo:
@@ -40,6 +39,7 @@ def _carregar_tag_info():
                             "nome": nome,
                             "tipo": linha.get("tipo"),
                             "valor": linha.get("valor"),
+                            "peso": linha.get("peso"),
                             "mestra": linha.get("mestra", "").strip().lower() in {"1", "true", "yes"},
                         }
                 if tag_info:
@@ -72,6 +72,19 @@ def _resolver_log_path():
 
 
 LOG_FILE_PATH = _resolver_log_path()
+
+def _obter_info_animal(tag_id):
+    """Retorna os dados da tag, aceitando IDs vindos de leitores ou CSVs."""
+    return TAG_INFO.get(str(tag_id).strip(), {})
+
+
+def _formatar_numero(valor, casas=3):
+    """Formata pesos sem falhar quando o CSV fornece texto ou valor vazio."""
+    try:
+        return f"{float(valor):.{casas}f}"
+    except (TypeError, ValueError):
+        return str(valor) if valor not in (None, "") else "N/A"
+
 
 def _escapar_markdown(texto: str) -> str:
     """
@@ -110,7 +123,7 @@ def notificar_subida_animal(tag_id):
     """
     Cria e envia uma notificação para quando o animal sobe na balança e é pesado.
     """
-    info_animal = TAG_INFO.get(tag_id, {})
+    info_animal = _obter_info_animal(tag_id)
     nome_animal = info_animal.get('nome', 'Nome não cadastrado')
     
     nome_animal_escaped = _escapar_markdown(nome_animal)
@@ -131,7 +144,7 @@ def notificar_bloqueio_alimentacao(tag_id):
     Cria e envia uma notificação para quando um animal é identificado,
     mas não pode ser alimentado.
     """
-    info_animal = TAG_INFO.get(tag_id, {})
+    info_animal = _obter_info_animal(tag_id)
     nome_animal = info_animal.get('nome', 'Nome não cadastrado')
     
     nome_animal_escaped = _escapar_markdown(nome_animal)
@@ -151,7 +164,7 @@ def notificar_descida_animal(tag_id, tempo_permanencia):
     """
     Cria e envia uma notificação para quando o animal desce da balança.
     """
-    info_animal = TAG_INFO.get(tag_id, {})
+    info_animal = _obter_info_animal(tag_id)
     nome_animal = info_animal.get('nome', 'Nome não cadastrado')
 
     nome_animal_escaped = _escapar_markdown(nome_animal)
@@ -173,15 +186,15 @@ def notificar_discrepancia_peso(tag_id, peso_medido, ultimo_peso, discrepancia_p
     """
     Cria e envia uma notificação detalhada sobre uma discrepância de peso detectada.
     """
-    info_animal = TAG_INFO.get(tag_id, {})
+    info_animal = _obter_info_animal(tag_id)
     nome_animal = info_animal.get('nome', 'Nome não cadastrado')
 
     sinal = '+' if discrepancia_percentual > 0 else ''
     emoji_status = "" if discrepancia_percentual > 0 else ""
 
-    ultimo_peso_str = f"{ultimo_peso:.2f}"
-    peso_medido_str = f"{peso_medido:.2f}"
-    discrepancia_str = f"{sinal}{discrepancia_percentual:.2f}"
+    ultimo_peso_str = _formatar_numero(ultimo_peso, 2)
+    peso_medido_str = _formatar_numero(peso_medido, 2)
+    discrepancia_str = f"{sinal}{_formatar_numero(discrepancia_percentual, 2)}"
 
     nome_animal_escaped = _escapar_markdown(nome_animal)
     tag_id_escaped = _escapar_markdown(tag_id)
@@ -223,7 +236,7 @@ def notificar_motor_infinito(tag_id):
     Cria e envia uma notificação para quando um animal é identificado,
     mas não pode ser alimentado.
     """
-    info_animal = TAG_INFO.get(tag_id, {})
+    info_animal = _obter_info_animal(tag_id)
     nome_animal = info_animal.get('nome', 'Nome não cadastrado')
     
     nome_animal_escaped = _escapar_markdown(nome_animal)
@@ -259,8 +272,8 @@ def notificar_relatorio_alimentacao(dados_relatorio):
     hora_saida_escaped = _escapar_markdown(hora_saida)
     tempo_cocho_escaped = _escapar_markdown(tempo_cocho)
     
-    peso_animal_escaped = _escapar_markdown(f"{peso_animal:.3f}")
-    peso_racao_escaped = _escapar_markdown(f"{peso_racao:.3f}")
+    peso_animal_escaped = _escapar_markdown(_formatar_numero(peso_animal))
+    peso_racao_escaped = _escapar_markdown(_formatar_numero(peso_racao))
 
     mensagem = (
         f" *Relatório de Alimentação* \n\n"

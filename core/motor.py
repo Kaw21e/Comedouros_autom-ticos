@@ -11,13 +11,13 @@ import sys
 
 # --- Motor 1 ---
 M1_R_PWM_PIN = 12    # Pino Físico 8
-M1_L_PWM_PIN = 16   # Pino Físico 10
-M1_SENSOR_PIN = 22  # Pino Físico 18 (LM358)
+M1_L_PWM_PIN = 	16   # Pino Físico 10
+M1_SENSOR_PIN = 18  # Pino Físico 18 (LM358)
 
 # --- Motor 2 ---
 M2_R_PWM_PIN = 8   # Pino Físico 12
 M2_L_PWM_PIN = 10   # Pino Físico 16
-M2_SENSOR_PIN = 18  # Pino Físico 22 (LM358)
+M2_SENSOR_PIN = 22  # Pino Físico 22 (LM358)
 
 # ==========================================
 # MAPA DE CONVERSÃO (BOARD -> BCM)
@@ -134,7 +134,7 @@ def controlar_motor(direcao, velocidade, motor_id):
     velocidade = _limitar_velocidade(velocidade)
 
     BCM_L = M1_L_BCM if motor_id == 1 else M2_L_BCM
-    BCM_R = M1_R_BCM if motor_id == 1 else M2_L_BCM
+    BCM_R = M1_R_BCM if motor_id == 1 else M2_R_BCM
 
     if direcao == "horario":
         pigpio_conn.set_PWM_dutycycle(BCM_L, 0)
@@ -181,9 +181,9 @@ def ler_sensor_motor(motor_id):
 
     if pi is not None and pi.connected and pinoBcm is not None:
         estado = pi.read(pinoBcm)
-        print(f"Sensor Motor {motor_id}: {'HIGH' if estado else 'LOW'} ({estado}) Pino:18")
+     #   print(f"Sensor Motor {motor_id}: {'HIGH' if estado else 'LOW'} ({estado}) Pino:18")
         return estado
-    return 0
+    return -1
 
 
 def _executar_rotina_destravamento(motor_id, logger=None):
@@ -210,6 +210,15 @@ def _executar_rotina_destravamento(motor_id, logger=None):
             f"Rotina de destravamento do {nome_motor} finalizada. "
             f"Retornando para {direcao_ativa} em velocidade {velocidade_ativa}."
         )
+
+def destravar (motor_id, buffer):
+    travado = ler_sensor_motor(motor_id)
+    if len(buffer) > 3:
+        buffer.pop(0)
+    buffer.append(travado)
+
+    if all(x == 1 for x in buffer):
+        _executar_rotina_destravamento(motor_id)
 
 if __name__ == "__main__":
     pass

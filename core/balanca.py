@@ -2,7 +2,9 @@ import RPi.GPIO as GPIO
 import time
 import numpy as np
 from config import *
-
+import csv
+import os
+import grafico_maker
 
 
 
@@ -161,7 +163,8 @@ def main():
         calibrar_balanca(num)  
         
     print("\n--- Lendo pesos em tempo real (Ctrl+C para sair) ---")
-    
+
+    leituras = []
     try:
         buffer_peso1 = []
         buffer_peso2 = []
@@ -174,6 +177,8 @@ def main():
                 peso1 = mediana_buffer(buffer_peso1, peso1)
             if peso2 is not None:
                 peso2 = mediana_buffer(buffer_peso2, peso2)
+
+            leituras.append([peso1, bruto1, peso2, bruto2])
             # Garante que não vai dar erro se a leitura falhar
             p1_str = f"{peso1:6.2f} kg" if peso1 is not None else "Erro"
             p2_str = f"{peso2:6.2f} kg" if peso2 is not None else "Erro"
@@ -188,6 +193,13 @@ def main():
             
     except KeyboardInterrupt:
         print("\nEncerrando teste...")
+        os.makedirs("balanca_debug", exist_ok=True)  
+        caminho_csv = os.path.join("balanca_debug", "leituras_balanca.csv")  
+        with open(caminho_csv, "w", newline="") as f: 
+            w = csv.writer(f)
+            w.writerow(["peso1", "bruto1", "peso2", "bruto2"])
+            w.writerows(leituras) 
+        grafico_maker.grafico_make(caminho_csv)
     finally:
         GPIO.cleanup()
 

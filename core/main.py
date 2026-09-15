@@ -5,7 +5,7 @@ import relatorio as rl
 import pandas as pd
 from config import *
 import threading
-import botoes_motores_manual as btm
+import botoes_manual as btm
 import motor as mt
 import sys
 
@@ -14,11 +14,13 @@ parar = threading.Event() #sistema para desligar todas as threads
 
 
 def rodar_ciclos(sistemaCocho):
-    
+    ultima_recal = 0   
     while not parar.is_set(): #loop principal
 
-        sistemaCocho.recalibrar_balanca_sem_presenca() #enquanto não há vacas no cocho, o sistema fica recalibrando a balança
-
+        if time.monotonic() - ultima_recal > 30:     # a cada 30s
+            sistemaCocho.recalibrar_balanca_sem_presenca() #enquanto não há vacas no cocho, o sistema fica recalibrando a balança
+            ultima_recal = time.monotonic()
+        
         if sr.confirmar_presenca_sensor('1'): #se tiver vacas no sensor 1, o ciclo se inicia
             print("presença confirmada no sensor 1, entrando no ciclo cocho")
             resposta = sistemaCocho.executar_um_ciclo()
@@ -30,7 +32,6 @@ def rodar_ciclos(sistemaCocho):
                 if resposta.get('peso_animal') > -1:
                     sistemaCocho.salvar_peso_animal(resposta['tag_id'], resposta['peso_animal'])
 
-
 def notificar():
         
     while not parar.is_set():
@@ -41,9 +42,21 @@ def notificar():
 def botao():
     estado1 = BOTAO_SOLTO
     estado2 = BOTAO_SOLTO
+    estado3 = BOTAO_SOLTO
+    estado4 = BOTAO_SOLTO
+    buffer_travado1 = []
+    buffer_travado2 = [] #deixar bonito depois
     while not parar.is_set():
+
         estado1 = btm.monitorar_botao_motor(1, estado1)
         estado2 = btm.monitorar_botao_motor(2, estado2)
+        btm.calibrar(1,estado3)
+        btm.calibrar(2,estado4)
+
+
+        mt.destravar(1, buffer_travado1)
+
+
 
 def desligar():
     """Para motores e limpa a GPIO. Best-effort, chamado uma vez no fim."""

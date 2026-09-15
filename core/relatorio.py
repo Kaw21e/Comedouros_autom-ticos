@@ -127,6 +127,7 @@ def sincronizar_csv_com_sheets():
             if chave not in chaves_sheet:
                 registros_faltantes.append(linha.to_dict())
 
+
         if planilha.row_count == 0:
             planilha.append_row(colunas, value_input_option="USER_ENTERED")
 
@@ -143,3 +144,4 @@ def sincronizar_csv_com_sheets():
     except Exception as e:
         logging.error(f"Erro na sincronização CSV x Sheets: {e}")
         return 0
+
