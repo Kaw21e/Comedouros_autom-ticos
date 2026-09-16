@@ -3,9 +3,33 @@ from datetime import datetime
 import os
 import logging
 
-from config import TAG_INFO
+from config import TAG_INFO_CSV
 
 INTERVALO_HORAS = 24
+
+
+def _tag_e_mestra(tag_id):
+    """Carrega a configuração atual da tag e verifica a permissão mestra."""
+    try:
+        tag_info = pd.read_csv(TAG_INFO_CSV, dtype=str)
+        if "tag_id" not in tag_info.columns or "mestra" not in tag_info.columns:
+            logging.warning("tag_info.csv não possui as colunas 'tag_id' e 'mestra'.")
+            return False
+
+        tag_procurada = str(tag_id).strip().upper()
+        registros = tag_info[
+            tag_info["tag_id"].fillna("").astype(str).str.strip().str.upper()
+            == tag_procurada
+        ]
+        if registros.empty:
+            return False
+
+        valor = str(registros.iloc[-1]["mestra"]).strip().lower()
+        return valor in {"1", "true", "t", "yes", "sim"}
+    except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError) as erro:
+        logging.warning("Não foi possível ler as configurações das tags: %s", erro)
+        return False
+
 
 def verificar_intervalo_alimentacao(tag_id, caminho_csv, intervalo_horas=INTERVALO_HORAS):
     """
@@ -22,8 +46,10 @@ def verificar_intervalo_alimentacao(tag_id, caminho_csv, intervalo_horas=INTERVA
         False se LIBERADO (tag sem registro recente, sem registros, ou tag mestra)
     """
     try:
-        tag_info = TAG_INFO.get(str(tag_id).strip(), {})
-        if tag_info.get("mestra", False):
+        if intervalo_horas <= 0:
+            raise ValueError("intervalo_horas deve ser maior que zero")
+
+        if _tag_e_mestra(tag_id):
             logging.debug(f"Tag mestra '{tag_id}' liberada sem restrição de intervalo.")
             return False
 
@@ -38,17 +64,27 @@ def verificar_intervalo_alimentacao(tag_id, caminho_csv, intervalo_horas=INTERVA
         if df.empty:
             return False
 
+        colunas_necessarias = {"tag_id", "hora_entrada"}
+        if not colunas_necessarias.issubset(df.columns):
+            logging.error(
+                "Relatório sem as colunas necessárias: %s",
+                sorted(colunas_necessarias - set(df.columns)),
+            )
+            return False
+
         # Normaliza a tag e filtra apenas os registros dela
         df['tag_id'] = df['tag_id'].astype(str).str.strip()
         tag_procurada = str(tag_id).strip()
-        df_tag = df[df['tag_id'] == tag_procurada]
+        df_tag = df[df['tag_id'] == tag_procurada].copy()
 
         if df_tag.empty:
             return False
 
         # Converter hora_entrada para datetime logo após ler
         try:
-            df_tag['hora_entrada'] = pd.to_datetime(df_tag['hora_entrada'], errors='coerce')
+            df_tag['hora_entrada'] = pd.to_datetime(
+                df_tag['hora_entrada'], errors='coerce'
+            )
         except Exception as e:
             logging.warning(f"Erro ao converter hora_entrada para datetime: {e}")
             return False

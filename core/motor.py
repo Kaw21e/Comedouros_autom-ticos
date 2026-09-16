@@ -119,13 +119,23 @@ def _limitar_velocidade(velocidade):
 
 #APÓS 15 SEGUNDOS DO MOTOR MOVENDO ELE É FORÇADO A PARAR
 def parar_motor(velocidade, motor_id):
-    contador = 0
-    while velocidade > 0 and contador < 15:
-        time.sleep(1)
-        contador += 1
+    if velocidade <= 0:
+        return
 
-    if contador == 15:
-        _definir_estado_normal(motor_id, "parado", 0)
+    inicio_movimento = time.monotonic()
+    while time.monotonic() - inicio_movimento < 15:
+        with _motor_lock:
+            _, velocidade_atual = _estado_manual[motor_id] or _estado_normal[motor_id]
+
+        if velocidade_atual <= 0:
+            return
+
+        time.sleep(0.1)
+
+    with _motor_lock:
+        _estado_normal[motor_id] = ("parado", 0)
+        _estado_manual[motor_id] = None
+        controlar_motor("parado", 0, motor_id)
 
 
 
@@ -158,6 +168,8 @@ def _definir_estado_normal(motor_id, direcao, velocidade=0):
         _aplicar_estado_motor(motor_id)
 
 
+
+#ONDE EU PODERIA APLICAR ISSO??
 def _definir_estado_manual(motor_id, direcao, velocidade=255):
     with _motor_lock:
         _estado_manual[motor_id] = (direcao, _limitar_velocidade(velocidade))

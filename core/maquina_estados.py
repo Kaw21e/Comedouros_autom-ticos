@@ -7,7 +7,8 @@ import motor
 import balanca as bl
 import numpy as np
 import botoes_manual as btm
-
+import notificacoes as nt 
+from verificar_intervalo_alimentacao import verificar_intervalo_alimentacao
 
 class SistemaCocho:
     def __init__(self):
@@ -24,7 +25,7 @@ class SistemaCocho:
             sr.setup_gpio() # setando gpios do sensor
             btm.setup_botoes() 
             self.leitor_rfid = rfid.iniciar_leitor()
-            self.tag_info = pd.read_csv('tag_info.csv')
+            self.tag_info = pd.read_csv(TAG_INFO_CSV)
             self.relatorio_csv = pd.read_csv(LOCAL_RELATORIO_CSV)
             motor.setup_todos_os_motores()
             motor._definir_estado_normal(2, "horario", 255)
@@ -51,8 +52,18 @@ class SistemaCocho:
     def salvar_peso_animal(self, tag, peso):
         if peso and peso > 0:
             self.tag_info.loc[self.tag_info['tag_id'] == tag, 'peso'] = round(peso, 2)
-            self.tag_info.to_csv('tag_info.csv', index=False)
-            self.tag_info = pd.read_csv('tag_info.csv')
+            self.tag_info.to_csv(TAG_INFO_CSV, index=False)
+            self.tag_info = pd.read_csv(TAG_INFO_CSV)
+
+    def logar_pesos_reais(self):
+        peso1, bruto1 = bl.ler_peso(1)
+        peso2, bruto2 = bl.ler_peso(2)
+        peso1_log = f"{peso1:.3f} kg" if peso1 is not None else "ERRO"
+        peso2_log = f"{peso2:.3f} kg" if peso2 is not None else "ERRO"
+        print(
+            f"[BALANCAS] Balança 1: {peso1_log} (bruto: {bruto1}) | "
+            f"Balança 2: {peso2_log} (bruto: {bruto2})"
+        )
 
     def _aguardar_retorno_animal(self):
         """Espera o animal voltar ao sensor antes de encerrar a alimentação."""
@@ -84,6 +95,8 @@ class SistemaCocho:
         peso_racao_despejada = 0
         entrada = time.ctime()
         inicio = time.monotonic()
+
+        self.logar_pesos_reais()
         
         try:
             
@@ -103,6 +116,18 @@ class SistemaCocho:
 
                         if tag in self.tag_info['tag_id'].values: #vê se a tag ta no .csv
 
+                            if verificar_intervalo_alimentacao(tag, LOCAL_RELATORIO_CSV):
+                                print(
+                                    f"Tag {tag} bloqueada: já se alimentou "
+                                    "nas últimas 24 horas."
+                                )
+                                nt.notificar_bloqueio_alimentacao(tag)
+                                sr.aguardar_sensor_livre('1')
+                                return None
+
+                            ##TELEGRAM  ALERTA
+                            nt.notificar_subida_animal(tag)
+
                             peso_racao = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'valor'].values[0] #pega o peso da ração no .csv
                             nome_animal = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'nome'].values[0]
                             peso_animal_anterior = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'peso'].values[0]
@@ -117,6 +142,8 @@ class SistemaCocho:
 
                             #começa a rodar o motor e ler balanca 3. ALIMENTAÇÃO (Motor/Balança)
                             while True:
+                                self.logar_pesos_reais()
+
                                 if not sr.confirmar_presenca_sensor('1'):
                                     motor._definir_estado_normal(1, "parado", 0)
                                     if not self._aguardar_retorno_animal():
@@ -144,6 +171,7 @@ class SistemaCocho:
                             motor._definir_estado_normal(2, "horario", 255)
 
                             for _ in range(10):
+                                self.logar_pesos_reais()
                                 peso2,_ = bl.ler_peso(2)
                                 if peso2 is not None:
                                     peso_animal_buffer.append(peso2)
@@ -174,6 +202,10 @@ class SistemaCocho:
         except Exception as e:
             print(f"Erro no sistema principal: {e}")
             return None
+
+        if not tag:
+            return None
+
         return {
             'tag_id': tag,
             'nome': nome_animal,
@@ -192,7 +224,8 @@ if __name__ == "__main__":
         sistemaCocho.configurar_cocho()
         while True:
             resposta = sistemaCocho.executar_um_ciclo()
-            print(resposta)
+            if resposta is not None:
+                print(resposta)               
             time.sleep(1)
 
     except KeyboardInterrupt:

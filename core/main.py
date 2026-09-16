@@ -8,6 +8,7 @@ import threading
 import botoes_manual as btm
 import motor as mt
 import sys
+import notificacoes as nt
 
 parar = threading.Event() #sistema para desligar todas as threads
 
@@ -15,7 +16,12 @@ parar = threading.Event() #sistema para desligar todas as threads
 
 def rodar_ciclos(sistemaCocho):
     ultima_recal = 0   
+    ultimo_log_pesos = 0
     while not parar.is_set(): #loop principal
+
+        if time.monotonic() - ultimo_log_pesos >= 1:
+            sistemaCocho.logar_pesos_reais()
+            ultimo_log_pesos = time.monotonic()
 
         if time.monotonic() - ultima_recal > 30:     # a cada 30s
             sistemaCocho.recalibrar_balanca_sem_presenca() #enquanto não há vacas no cocho, o sistema fica recalibrando a balança
@@ -25,6 +31,12 @@ def rodar_ciclos(sistemaCocho):
             print("presença confirmada no sensor 1, entrando no ciclo cocho")
             resposta = sistemaCocho.executar_um_ciclo()
             print(resposta) #retorna os dados sobre o que aconteceu no ciclo.
+
+            #RELATORIO TELEGRAM
+            if resposta:
+                nt.notificar_relatorio_alimentacao(resposta)
+            
+            #SHEETS
             if resposta and list(resposta.values())[0]:
                 sistemaCocho.relatorio_csv = pd.read_csv(LOCAL_RELATORIO_CSV)
                 rl.salvar_registro_csv(sistemaCocho.relatorio_csv, resposta)
@@ -77,6 +89,8 @@ if __name__ == "__main__":
 
     try:
         sistemaCocho.configurar_cocho()
+        print("\nLeitura inicial das balanças:")
+        sistemaCocho.logar_pesos_reais()
     except KeyboardInterrupt:
         desligar()
         sys.exit()
