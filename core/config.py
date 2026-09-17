@@ -32,12 +32,22 @@ BOTAO_CALIBRAR2 = 32
 RFID_PORTA_SERIAL = "/dev/ttyUSB0"
 RFID_BAUDRATE = 38400
 RFID_POTENCIA_DB = 15
+TAGS_RFID_IGNORADAS = {
+    "0E8A3000E2801191A50400721456F326",
+}
 
 # --- CONFIGURAÇÕES DA BALANCA ---
 BALANCAS = {
         1: {"DT": 15, "SCK": 13, "fator": -136833.195, "tara": 0},  # Balança da ração
         2: {"DT": 7, "SCK": 11, "fator": -7228.267, "tara": 0},   # Balança do animal
     }
+
+# Pesos conhecidas usadas nos tres apertos do botao de recalibracao, em kg.
+# Altere estes valores para corresponder aos pesos realmente colocados.
+PESOS_CALIBRACAO_KG = {
+    1: (0.1, 0.2, 0.3),
+    2: (1.0, 2.0, 3.0),
+}
 
 
 # --- Dados Relatorio cocho csv ---

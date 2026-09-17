@@ -4,7 +4,12 @@ import time
 import pandas as pd
 import os
 from reader import Reader
-from config import RFID_PORTA_SERIAL, RFID_BAUDRATE, RFID_POTENCIA_DB
+from config import (
+    RFID_PORTA_SERIAL,
+    RFID_BAUDRATE,
+    RFID_POTENCIA_DB,
+    TAGS_RFID_IGNORADAS,
+)
 
 
 def normalizar_tag_id(tag_id):
@@ -37,7 +42,7 @@ def iniciar_leitor():
         print(f" Erro ao iniciar leitor: {e}")
         return None
 
-def ler_tags(leitor, timeout=5):
+def ler_tags(leitor, timeout=5, tags_ignoradas=TAGS_RFID_IGNORADAS):
     """
     Lê uma única tag dentro de um tempo limite e retorna seu ID.
 
@@ -71,6 +76,9 @@ def ler_tags(leitor, timeout=5):
                 for tag in tags:
                     raw_data = tag[0]
                     tag_id = normalizar_tag_id("".join(f"{word:04X}" for word in raw_data))
+                    if tag_id in tags_ignoradas:
+                        print(f" Tag RFID ignorada: {tag_id}")
+                        continue
                     print(f" Tag lida: {tag_id}")
                     return tag_id
             time.sleep(0.1)

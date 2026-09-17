@@ -52,8 +52,14 @@ def _carregar_tag_info():
 
 TAG_INFO = _carregar_tag_info()
 
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+BOT_TOKEN = os.environ.get(
+    "TELEGRAM_BOT_TOKEN",
+    "COLE_SEU_TOKEN_DO_BOT_AQUI",
+).strip()
+CHAT_ID = os.environ.get(
+    "TELEGRAM_CHAT_ID",
+    "COLE_SEU_CHAT_ID_AQUI",
+).strip()
 
 
 def _resolver_log_path():
@@ -100,20 +106,40 @@ def enviar_alerta_telegram(mensagem):
     """
     Função base que envia uma mensagem de alerta para o Telegram.
     """
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    token = (os.environ.get("TELEGRAM_BOT_TOKEN") or BOT_TOKEN).strip()
+    chat_id = (os.environ.get("TELEGRAM_CHAT_ID") or CHAT_ID).strip()
+
+    if not token or not chat_id:
+        faltantes = []
+        if not token:
+            faltantes.append("TELEGRAM_BOT_TOKEN")
+        if not chat_id:
+            faltantes.append("TELEGRAM_CHAT_ID")
+        logging.error(
+            "Telegram nao configurado; variavel(is) ausente(s): %s",
+            ", ".join(faltantes),
+        )
+        return False
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
-        "chat_id": CHAT_ID,
+        "chat_id": chat_id,
         "text": mensagem,
         "parse_mode": "MarkdownV2"
     }
     
     try:
         response = requests.post(url, data=payload, timeout=10)
-        if response.status_code == 200:
+        resposta = response.json()
+        if response.status_code == 200 and resposta.get("ok") is True:
             logging.info("Alerta enviado com sucesso para o Telegram.")
             return True
         else:
-            logging.error(f"Falha ao enviar alerta para o Telegram. Status: {response.status_code}, Resposta: {response.text}")
+            logging.error(
+                "Falha ao enviar alerta para o Telegram. Status: %s, Resposta: %s",
+                response.status_code,
+                resposta,
+            )
             return False
     except Exception as e:
         logging.error(f"Erro de conexão ao tentar enviar alerta para o Telegram: {e}")

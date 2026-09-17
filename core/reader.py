@@ -159,7 +159,7 @@ class Reader():
             else:
                 return self.hex_str_to_int_list(string_response_bytes)
         
-    def multi_tag_EPC_read(self, raw=False, crc=True, max=4):
+    def multi_tag_EPC_read(self, raw=False, crc=True, max=4, timeout=2):
         """
         Read EPC of multiple tags
 
@@ -175,25 +175,32 @@ class Reader():
         self.ser.write(to_write)
 
         data = []
+        inicio_leitura = time.monotonic()
         while True:
 
-            while self.ser.readline() != b'\n':
-                    time.sleep(0.0001)
+            if time.monotonic() - inicio_leitura >= timeout:
+                print("Tempo esgotado aguardando resposta do leitor RFID.")
+                return data if data else False
 
-            string_response_bytes = self.ser.readline()
+            linha = self.ser.readline()
+            if not linha or linha in {b'\n', b'\r\n'}:
+                continue
 
-            if string_response_bytes == b'U\r\n':
+            string_response_bytes = linha
+            if string_response_bytes.strip() in {b'U', b'U\r'}:
                 break
+
+            string_form = str(string_response_bytes)
 
             if crc:
 
-                string_form = str(string_response_bytes)
-
-                crc_from_tag = int(string_form[-9:-5], 16)
-
-                pc_and_epc_string = string_form[3:-9]
-
-                input_bytes = bytes.fromhex(pc_and_epc_string)
+                try:
+                    crc_from_tag = int(string_form[-9:-5], 16)
+                    pc_and_epc_string = string_form[3:-9]
+                    input_bytes = bytes.fromhex(pc_and_epc_string)
+                except (ValueError, IndexError):
+                    print(f"Resposta RFID invalida: {string_response_bytes!r}")
+                    continue
 
                 crc_calculated = self.crc16(input_bytes)
 

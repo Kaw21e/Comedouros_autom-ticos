@@ -62,8 +62,8 @@ def botao():
 
         estado1 = btm.monitorar_botao_motor(1, estado1)
         estado2 = btm.monitorar_botao_motor(2, estado2)
-        btm.calibrar(1,estado3)
-        btm.calibrar(2,estado4)
+        estado3 = btm.calibrar(1, estado3)
+        estado4 = btm.calibrar(2, estado4)
 
 
         mt.destravar(1, buffer_travado1)

@@ -8,6 +8,7 @@ import balanca as bl
 import numpy as np
 import botoes_manual as btm
 import notificacoes as nt 
+import traceback
 from verificar_intervalo_alimentacao import verificar_intervalo_alimentacao
 
 class SistemaCocho:
@@ -44,10 +45,13 @@ class SistemaCocho:
         """
         if (not sr.sensor_tem_presenca('1')) and (not sr.sensor_tem_presenca('2')):
             for num in BALANCAS.keys():
-                tara = bl.retarar_balanca(num)
-                if (not sr.sensor_tem_presenca('1')) and (not sr.sensor_tem_presenca('2')):
-                    bl.salvar_tara(num, tara)
-                    print(f'tara da balança{num} foi salva')
+                try:
+                    tara = bl.retarar_balanca(num)
+                    if (not sr.sensor_tem_presenca('1')) and (not sr.sensor_tem_presenca('2')):
+                        bl.salvar_tara(num, tara)
+                        print(f'tara da balança{num} foi salva')
+                except (TimeoutError, ValueError, RuntimeError) as erro:
+                    print(f"Falha ao recalibrar a balanca {num}: {erro}")
 
     def salvar_peso_animal(self, tag, peso):
         if peso and peso > 0:
@@ -102,19 +106,18 @@ class SistemaCocho:
             
             while sr.confirmar_presenca_sensor('1'): #começa confirmando a presença do animal
 
-                tag = rfid.normalizar_tag_id(rfid.ler_tags(self.leitor_rfid, timeout=5))#se animal está presente, tenta ler o rfid   2. IDENTIFICAÇÃO (RFID)
+                tag = rfid.normalizar_tag_id(
+                    rfid.ler_tags(
+                        self.leitor_rfid,
+                        timeout=5,
+                        tags_ignoradas=TAGS_RFID_IGNORADAS,
+                    )
+                )  # tenta ler o RFID enquanto o animal estiver presente
 
                 if tag: #se achou o rfid
+                    print(f"tag lida: {tag}")
 
-		    #TAG FANTASMA 
-                    if tag == '0E8A3000E2801191A50400721456F326':
-                        print(f"TAG FANTASMA FOI LIDA")
-
-                    else:
-                        
-                        print(f"tag lida: {tag}")
-
-                        if tag in self.tag_info['tag_id'].values: #vê se a tag ta no .csv
+                    if tag in self.tag_info['tag_id'].values: #vê se a tag ta no .csv
 
                             if verificar_intervalo_alimentacao(tag, LOCAL_RELATORIO_CSV):
                                 print(
@@ -128,7 +131,19 @@ class SistemaCocho:
                             ##TELEGRAM  ALERTA
                             nt.notificar_subida_animal(tag)
 
-                            peso_racao = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'valor'].values[0] #pega o peso da ração no .csv
+                            peso_racao = pd.to_numeric(
+                                self.tag_info.loc[
+                                    self.tag_info['tag_id'] == tag, 'valor'
+                                ].values[0],
+                                errors='coerce',
+                            )  # pega o peso da ração no .csv
+                            if pd.isna(peso_racao) or peso_racao <= 0:
+                                print(
+                                    f"Valor de racao invalido para a tag {tag}; "
+                                    "ciclo cancelado."
+                                )
+                                sr.aguardar_sensor_livre('1')
+                                return None
                             nome_animal = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'nome'].values[0]
                             peso_animal_anterior = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'peso'].values[0]
                             tipo_racao = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'tipo'].values[0]
@@ -196,11 +211,15 @@ class SistemaCocho:
                             segundos = int(segundos_no_cocho % 60)
                             break
 
-                        elif tag:
-                            print(f"Tag {tag} não foi encontrada no sistema csv")
-                            return None
+                    elif tag:
+                        print(
+                            f"Tag {tag} não foi encontrada no sistema csv; "
+                            "aguardando uma tag cadastrada."
+                        )
+                        continue
         except Exception as e:
             print(f"Erro no sistema principal: {e}")
+            traceback.print_exc()
             return None
 
         if not tag:

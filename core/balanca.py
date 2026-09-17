@@ -9,6 +9,8 @@ import grafico_maker
 
 
 TIMEOUT_LEITURA_HX711_SEGUNDOS = 2
+VALOR_HX711_MINIMO = 1
+VALOR_HX711_MAXIMO = 0xFFFFFF - 1
 
 #configura os pinos GPIO para uma balanca
 def setup_balanca(dt, sck):
@@ -49,6 +51,10 @@ def read_count(dt, sck, timeout=TIMEOUT_LEITURA_HX711_SEGUNDOS):
     GPIO.output(sck, True)
     GPIO.output(sck, False)
     count = count ^ 0x800000
+
+    if not VALOR_HX711_MINIMO <= count <= VALOR_HX711_MAXIMO:
+        raise ValueError(f"Leitura HX711 saturada ou invalida: {count}")
+
     return count
 
 #TRANSFORMA LEITURA BRUTA EM PESO REAL 
@@ -75,7 +81,17 @@ def calibrar_balanca(num_balanca):
 
 
     print("Realizando leituras...")
-    leituras = [read_count(dt, sck) for _ in range(20)]
+    leituras = []
+    for _ in range(20):
+        try:
+            leituras.append(read_count(dt, sck))
+        except (TimeoutError, ValueError) as erro:
+            print(f"Leitura invalida na calibracao da balanca {num_balanca}: {erro}")
+
+    if len(leituras) < 5:
+        raise RuntimeError(
+            f"Poucas leituras validas para calibrar a balanca {num_balanca}."
+        )
     
     mediana_tara = np.median(leituras)
         
@@ -89,7 +105,17 @@ def retarar_balanca(num_balanca):
     print(f"\n--- recalibrando Balança {num_balanca} ---")
     
     print("Realizando leituras...")
-    leituras = [read_count(dt, sck) for _ in range(20)]
+    leituras = []
+    for _ in range(20):
+        try:
+            leituras.append(read_count(dt, sck))
+        except (TimeoutError, ValueError) as erro:
+            print(f"Leitura invalida ao retarar a balanca {num_balanca}: {erro}")
+
+    if len(leituras) < 5:
+        raise RuntimeError(
+            f"Poucas leituras validas para retarar a balanca {num_balanca}."
+        )
         
     mediana_tara = np.median(leituras)
     return mediana_tara
