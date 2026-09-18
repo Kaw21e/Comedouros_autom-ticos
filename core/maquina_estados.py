@@ -117,7 +117,26 @@ class SistemaCocho:
                 if tag: #se achou o rfid
                     print(f"tag lida: {tag}")
 
+<<<<<<< Updated upstream
                     if tag in self.tag_info['tag_id'].values: #vê se a tag ta no .csv
+=======
+		    #TAG FANTASMA 
+                    if tag == '0E8A3000E2801191A50400721456F326':
+                        print(f"TAG FANTASMA FOI LIDA")
+                        ####EU DUVIDO QUE ISSO FUNCIONA PARA IGNORAR A TAG, MAS EU DUVIDO!!!!!!!!!!!!!!!!######
+                        continue
+
+                    else:
+                        
+                        print(f"tag lida: {tag}")
+
+
+                        #CONFERIR SE ISSSO FUNCIONA !!!!!!!!!!!!!!!!!!!!!!!!!
+                        if tag in self.tag_info['tag_id'].values: #vê se a tag ta no .csv
+                            nome_animal = self.tag_info.loc[
+                                self.tag_info['tag_id'] == tag, 'nome'
+                            ].values[0]
+>>>>>>> Stashed changes
 
                             if verificar_intervalo_alimentacao(tag, LOCAL_RELATORIO_CSV):
                                 print(
@@ -126,11 +145,29 @@ class SistemaCocho:
                                 )
                                 nt.notificar_bloqueio_alimentacao(tag)
                                 sr.aguardar_sensor_livre('1')
-                                return None
+
+                                saida = time.ctime()
+                                segundos_no_cocho = time.monotonic() - inicio
+                                minutos = int(segundos_no_cocho // 60)
+                                segundos = int(segundos_no_cocho % 60)
+                                #CONFERIR SE ISSSO FUNCIONA !!!!!!!!!!!!!!!!!!!!!!!!!
+                                return {
+                                    'tag_id': tag,
+                                    'nome': nome_animal,
+                                    'hora_entrada': entrada,
+                                    'hora_saida': saida,
+                                    'tempo_cocho': (
+                                        f"{minutos}m {segundos:02d}s"
+                                        if minutos != 0 or segundos != 0 else 0
+                                    ),
+                                    'peso_animal': 0,
+                                    'peso_racao': -2
+                                }
 
                             ##TELEGRAM  ALERTA
                             nt.notificar_subida_animal(tag)
 
+<<<<<<< Updated upstream
                             peso_racao = pd.to_numeric(
                                 self.tag_info.loc[
                                     self.tag_info['tag_id'] == tag, 'valor'
@@ -145,6 +182,9 @@ class SistemaCocho:
                                 sr.aguardar_sensor_livre('1')
                                 return None
                             nome_animal = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'nome'].values[0]
+=======
+                            peso_racao = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'valor'].values[0] #pega o peso da ração no .csv
+>>>>>>> Stashed changes
                             peso_animal_anterior = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'peso'].values[0]
                             tipo_racao = self.tag_info.loc[self.tag_info['tag_id'] == tag, 'tipo'].values[0]
                                 
